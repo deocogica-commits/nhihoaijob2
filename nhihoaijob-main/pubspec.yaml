@@ -1,0 +1,42 @@
+name: tuanhoai01
+description: Ứng dụng tuyển dụng việc làm
+
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  remixicon: ^4.9.1
+  font_awesome_flutter: ^11.0.0
+
+  http: ^1.2.2
+  http_parser: ^4.1.0
+  shared_preferences: ^2.3.3
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.7
+  url_launcher: ^6.3.0
+  # 🔥 MỚI: Thêm thư viện để chọn ảnh từ thư viện điện thoại hoặc chụp ảnh
+  image_picker: ^1.1.2 
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/logo.png
+    - assets/images/banner1.png
+    - assets/images/banner2.png
+    - assets/images/taichung.png
+    - assets/images/kaoshong.png
+    - assets/images/tainan.png
+    - assets/images/taipei.png
