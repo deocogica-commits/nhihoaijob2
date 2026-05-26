@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dangtin.dart';
 import 'job_detail_screen.dart'; 
+import 'job_search_screen.dart';
 import 'region_job_screen.dart'; 
 import 'candidate_profile_screen.dart';
 
@@ -17,9 +18,11 @@ class CandidateHomeScreen extends StatefulWidget {
 
 class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
   late PageController _bannerController;
+  final TextEditingController _searchController = TextEditingController();
   String _currentRole = 'user'; 
   String _userName = 'Người dùng'; // Biến lưu tên người dùng
   List<dynamic> _recentJobs = [];
+  String _searchKeyword = '';
   bool _isLoadingJobs = true;
   String? _avatarUrl;
 
@@ -71,7 +74,7 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
   }
 
   Future<void> _fetchRecentJobs() async {
-    final url = Uri.parse('https://nhjob.online/api/posts/get_jobs.php');
+    final url = Uri.parse('https://nhjob.online/api/posts/get_jobs.php?category=sinh_vien');
     try {
       final response = await http.get(url);
       if (!mounted) return;
@@ -96,15 +99,35 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
     await _fetchRecentJobs();
   }
 
+  List<dynamic> get _filteredRecentJobs {
+    final keyword = _searchKeyword.trim().toLowerCase();
+    if (keyword.isEmpty) return _recentJobs;
+
+    return _recentJobs.where((job) {
+      if (job is! Map) return false;
+      final searchableText = [
+        job['title'],
+        job['region'],
+        job['salary'],
+        job['company_name'],
+        job['description'],
+      ].whereType<Object>().map((value) => value.toString().toLowerCase()).join(' ');
+
+      return searchableText.contains(keyword);
+    }).toList();
+  }
+
   @override
   void dispose() {
     _bannerController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     const Color mainColor = Color(0xFFE24C33);
+    final filteredRecentJobs = _filteredRecentJobs;
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FA),
       body: SafeArea(
@@ -118,7 +141,7 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
                 const SizedBox(height: 20),
                 _buildHeader(),
                 const SizedBox(height: 24),
-                _buildSearchBar(mainColor),
+                _buildHomeSearchBar(mainColor),
                 const SizedBox(height: 24),
                 _buildBannerSlider(),
                 const SizedBox(height: 30),
@@ -139,12 +162,22 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
                 const SizedBox(height: 16),
                 _isLoadingJobs
                     ? const Center(child: CircularProgressIndicator(color: mainColor))
-                    : ListView.builder(
+                    : filteredRecentJobs.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                            child: Text(
+                              _searchKeyword.trim().isEmpty
+                                  ? 'Chưa có việc làm sinh viên nào.'
+                                  : 'Không tìm thấy việc làm phù hợp.',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          )
+                        : ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        itemCount: _recentJobs.length,
-                        itemBuilder: (context, index) => _buildRecentJobCard(mainColor, _recentJobs[index]),
+                        itemCount: filteredRecentJobs.length,
+                        itemBuilder: (context, index) => _buildRecentJobCard(mainColor, filteredRecentJobs[index]),
                       ),
               ],
             ),
@@ -184,7 +217,73 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
     ])
   );
 
-  Widget _buildSearchBar(Color themeColor) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: Container(height: 52, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)]), child: Row(children: [const SizedBox(width: 16), const Icon(Remix.search_2_line), const SizedBox(width: 12), const Text('Tìm việc tại Đài Loan...'), const Spacer(), Icon(Remix.equalizer_line, color: themeColor), const SizedBox(width: 16)])));
+  Widget _buildHomeSearchBar(Color themeColor) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+    child: Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      ),
+      child: TextField(
+        controller: _searchController,
+        textInputAction: TextInputAction.search,
+        onChanged: (value) => setState(() => _searchKeyword = value),
+        decoration: InputDecoration(
+          hintText: 'Tìm việc sinh viên...',
+          border: InputBorder.none,
+          prefixIcon: const Icon(Remix.search_2_line),
+          suffixIcon: _searchKeyword.isEmpty
+              ? Icon(Remix.equalizer_line, color: themeColor)
+              : IconButton(
+                  icon: const Icon(Remix.close_line),
+                  color: Colors.grey,
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchKeyword = '');
+                  },
+                ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    ),
+  );
+
+  // ignore: unused_element
+  Widget _buildSearchBar(Color themeColor) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+    child: Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(26),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(26),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const JobSearchScreen()),
+          );
+        },
+        child: Container(
+          height: 52,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+          ),
+          child: Row(
+            children: [
+              const SizedBox(width: 16),
+              const Icon(Remix.search_2_line),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Tìm việc tại Đài Loan...')),
+              Icon(Remix.equalizer_line, color: themeColor),
+              const SizedBox(width: 16),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
   Widget _buildBannerSlider() => SizedBox(height: 160, child: PageView.builder(controller: _bannerController, itemCount: _bannerImages.length, itemBuilder: (context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.asset(_bannerImages[index], fit: BoxFit.cover)))));
   Widget _buildSectionTitle(String title) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]));
   Widget _buildRecentJobCard(Color themeColor, Map<String, dynamic> job) => Container(margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: ListTile(leading: CircleAvatar(backgroundColor: const Color(0xFFF4F7FA), child: Icon(Remix.briefcase_line, color: themeColor)), title: Text(job['title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text('${job['region'] ?? ''} • ${job['salary'] ?? ''}'), trailing: const Icon(Remix.arrow_right_s_line), onTap: () async { final refresh = await Navigator.push(context, MaterialPageRoute(builder: (context) => JobDetailScreen(job: job))); if (refresh == true) _handleRefresh(); }));

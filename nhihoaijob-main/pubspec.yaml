@@ -23,7 +23,7 @@ dependencies:
   equatable: ^2.0.7
   url_launcher: ^6.3.0
   # 🔥 MỚI: Thêm thư viện để chọn ảnh từ thư viện điện thoại hoặc chụp ảnh
-  image_picker: ^1.1.2 
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
