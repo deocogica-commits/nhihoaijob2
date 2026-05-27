@@ -37,15 +37,28 @@ class _JobSearchScreenState extends State<JobSearchScreen> {
     setState(() => _isLoading = true);
     
     // Nếu chọn 'Tất cả' thì gửi chuỗi rỗng hoặc 'Tất cả' để PHP xử lý
-    final url = Uri.parse(
-        'https://nhjob.online/api/posts/get_jobs.php?category=$_selectedCategory&region=$_selectedRegion'
+    final url = Uri.https(
+      'nhjob.online',
+      '/api/posts/get_jobs.php',
+      {
+        'category': _selectedCategory,
+        'region': _selectedRegion,
+      },
     );
     
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
+        final decodedJobs = jsonDecode(utf8.decode(response.bodyBytes));
+        final visibleJobs = decodedJobs is List
+            ? decodedJobs.where((job) {
+                if (job is! Map) return false;
+                return job['category']?.toString() != 'sinh_vien';
+              }).toList()
+            : [];
+
         setState(() {
-          _jobs = jsonDecode(utf8.decode(response.bodyBytes));
+          _jobs = visibleJobs;
           _isLoading = false;
         });
       } else {
