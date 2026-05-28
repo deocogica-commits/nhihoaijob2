@@ -6,11 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart'; // Import thư vi�
 class FormDangTinScreen extends StatefulWidget {
   final String title;
   final String category;
+  final Map<dynamic, dynamic>? existingJob;
 
   const FormDangTinScreen({
     super.key, 
     required this.title, 
     required this.category, 
+    this.existingJob,
   });
 
   @override
@@ -36,6 +38,30 @@ class _FormDangTinScreenState extends State<FormDangTinScreen> {
     {'value': 'Cao Hùng', 'label': 'Cao Hùng'}, 
   ];
 
+  bool get _isEditMode => widget.existingJob != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final job = widget.existingJob;
+    if (job == null) return;
+
+    _titleController.text = job['title']?.toString() ?? '';
+    _descriptionController.text = job['description']?.toString() ?? '';
+    _salaryController.text = job['salary']?.toString() ?? '';
+    _phoneController.text = job['contact_phone']?.toString() ?? '';
+
+    final regionText = job['region']?.toString() ?? '';
+    for (final region in _regions) {
+      final value = region['value']!;
+      if (regionText.startsWith(value)) {
+        _selectedRegion = value;
+        _detailAddressController.text = regionText.substring(value.length).trim();
+        break;
+      }
+    }
+  }
+
   Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -43,9 +69,12 @@ class _FormDangTinScreenState extends State<FormDangTinScreen> {
 
     // 1. Lấy ID người dùng đang đăng nhập từ SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    final String myId = (prefs.getString('id') ?? prefs.getInt('id')?.toString()) ?? '0';
+    final String myId = (prefs.getString('user_id') ?? prefs.getString('id') ?? prefs.getInt('id')?.toString()) ?? '0';
+    final String role = prefs.getString('role') ?? 'worker';
 
-    final url = Uri.parse('https://nhjob.online/api/posts/create_post.php');
+    final url = Uri.parse(_isEditMode
+        ? 'https://nhjob.online/api/posts/update_job.php'
+        : 'https://nhjob.online/api/posts/create_post.php');
 
     String fullAddress = "$_selectedRegion ${_detailAddressController.text.trim()}";
 
@@ -57,7 +86,12 @@ class _FormDangTinScreenState extends State<FormDangTinScreen> {
       'description': _descriptionController.text.trim(),
       'contact_phone': _phoneController.text.trim(),
       'user_id': myId, // 2. Gửi ID thực tế lên server thay vì số 1 cố định
+      'role': role,
     };
+
+    if (_isEditMode) {
+      postData['id'] = widget.existingJob?['id']?.toString() ?? '';
+    }
 
     try {
       final response = await http.post(
@@ -73,7 +107,10 @@ class _FormDangTinScreenState extends State<FormDangTinScreen> {
 
       if (responseData is Map<String, dynamic> && responseData['status'] == 'success') {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🎉 Đăng bài thành công!'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(_isEditMode ? 'Cập nhật bài thành công!' : 'Đăng bài thành công!'),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context, true);
       } else {
@@ -171,7 +208,7 @@ class _FormDangTinScreenState extends State<FormDangTinScreen> {
                       child: ElevatedButton(
                         onPressed: _submitPost,
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE24C33)),
-                        child: const Text("ĐĂNG TIN NGAY", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(_isEditMode ? "CẬP NHẬT BÀI" : "ĐĂNG TIN NGAY", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     )
                   ],

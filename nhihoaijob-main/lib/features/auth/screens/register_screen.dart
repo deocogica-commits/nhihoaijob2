@@ -78,6 +78,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           await prefs.setString('user_name', username);
           await prefs.setString('role', 'worker');
           await prefs.setString('auth_token', 'logged_in');
+          if (result['user'] is Map<String, dynamic>) {
+            final user = result['user'] as Map<String, dynamic>;
+            final userId = user['id']?.toString() ?? '';
+            if (userId.isNotEmpty) {
+              await prefs.setString('user_id', userId);
+              await prefs.setString('id', userId);
+            }
+            await prefs.setString('user_name', (user['name'] ?? user['username'] ?? username).toString());
+            await prefs.setString('role', (user['role'] ?? 'worker').toString());
+          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đăng ký thành công! Đang vào hệ thống...')),
