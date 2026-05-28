@@ -1,10 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dangtin.dart';
 
 class JobDetailScreen extends StatelessWidget {
   final Map<dynamic, dynamic> job;
   const JobDetailScreen({Key? key, required this.job}) : super(key: key);
+
+  Future<bool> _canDeleteJob() async {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('role') ?? 'worker';
+    final currentUserId = prefs.getString('user_id') ?? prefs.getString('id') ?? '';
+    final jobUserId = job['user_id']?.toString() ?? '';
+
+    if (role == 'admin') return true;
+    if (role == 'hr' || role == 'boss' || role == 'employer') {
+      return currentUserId.isNotEmpty && currentUserId == jobUserId;
+    }
+    return false;
+  }
+
+  Future<void> _openEditScreen(BuildContext context) async {
+    final refresh = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FormDangTinScreen(
+          title: 'Cập nhật bài đăng',
+          category: job['category']?.toString() ?? '',
+          existingJob: job,
+        ),
+      ),
+    );
+
+    if (refresh == true && context.mounted) {
+      Navigator.pop(context, true);
+    }
+  }
 
   Future<void> _confirmDelete(BuildContext context) async {
     // Nhận kết quả từ Dialog xác nhận
@@ -31,6 +63,9 @@ class JobDetailScreen extends StatelessWidget {
 
   Future<void> _deleteJob(BuildContext context) async {
     final url = Uri.parse('https://nhjob.online/api/posts/delete_job.php');
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('role') ?? 'worker';
+    final currentUserId = prefs.getString('user_id') ?? prefs.getString('id') ?? '';
     
     // Hiển thị loading
     showDialog(
@@ -43,7 +78,11 @@ class JobDetailScreen extends StatelessWidget {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"id": job['id'].toString()}),
+        body: jsonEncode({
+          "id": job['id'].toString(),
+          "user_id": currentUserId,
+          "role": role,
+        }),
       ).timeout(const Duration(seconds: 10));
 
       if (!context.mounted) return;
@@ -97,9 +136,24 @@ class JobDetailScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFE24C33),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_forever, color: Colors.white, size: 28),
-            onPressed: () => _confirmDelete(context),
+          FutureBuilder<bool>(
+            future: _canDeleteJob(),
+            builder: (context, snapshot) {
+              if (snapshot.data != true) return const SizedBox.shrink();
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.white),
+                    onPressed: () => _openEditScreen(context),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_forever, color: Colors.white, size: 28),
+                    onPressed: () => _confirmDelete(context),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
