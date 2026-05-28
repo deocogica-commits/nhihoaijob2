@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:http/http.dart' as http; // Thêm thư viện http để gọi API trực tiếp nếu cần
 import 'dart:convert'; // Thêm để giải mã chuỗi JSON từ Server
@@ -20,7 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
 
   // ĐƯỜNG LINK API CHUẨN ĐÃ ĐƯỢC FIX LỖI SERVER
-  final String _registerApiUrl = "http://nhjob.online/api/auth/register.php";
+  final String _registerApiUrl = "https://nhjob.online/api/auth/register.php";
   bool _isLoading = false;
 
   // 2. Hàm xử lý đăng ký gửi trực tiếp lên Host thật
@@ -59,6 +60,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }),
       );
 
+      debugPrint('REGISTER API URL: $_registerApiUrl');
+      debugPrint('REGISTER STATUS: ${response.statusCode}');
+      debugPrint('REGISTER HEADERS: ${response.headers}');
+      debugPrint('REGISTER BODY: ${response.body}');
+
       setState(() => _isLoading = false);
 
       if (response.statusCode == 200) {
@@ -67,6 +73,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         // ĐIỀU KIỆN QUYẾT ĐỊNH: Chỉ khi Server trả về status thành công mới cho vào trang Home
         if (result['status'] == 'success') {
+          if (!mounted) return;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_name', username);
+          await prefs.setString('role', 'worker');
+          await prefs.setString('auth_token', 'logged_in');
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đăng ký thành công! Đang vào hệ thống...')),
@@ -93,6 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } catch (e) {
+      debugPrint('REGISTER EXCEPTION: $e');
       // Trường hợp mất mạng hoặc không thể gửi request đi được
       setState(() => _isLoading = false);
       if (!mounted) return;

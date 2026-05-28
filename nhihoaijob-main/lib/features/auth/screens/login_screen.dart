@@ -18,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   // ĐƯỜNG LINK API ĐĂNG NHẬP CHUẨN TRÊN SERVER THẬT
-  final String _loginApiUrl = "http://nhjob.online/api/auth/login.php";
+  final String _loginApiUrl = "https://nhjob.online/api/auth/login.php";
   bool _isLoading = false;
 
   @override
@@ -68,13 +68,28 @@ class _LoginScreenState extends State<LoginScreen> {
           // Nếu server trả về key 'role' trực tiếp thì result['role'] sẽ hoạt động chuẩn xác.
           // Trong trường hợp quyền bị rỗng hoặc null, app sẽ mặc định gán là 'user' để bảo mật.
           String userRole = result['role'] ?? 'user';
+          final Map<String, dynamic>? user =
+              result['user'] is Map<String, dynamic>
+                  ? result['user'] as Map<String, dynamic>
+                  : null;
+          final String userName =
+              (user?['name'] ?? user?['username'] ?? email).toString();
+          final String userId = (user?['id'] ?? '').toString();
 
           final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_name', userName);
+          if (userId.isNotEmpty) {
+            await prefs.setString('user_id', userId);
+            await prefs.setString('id', userId);
+          }
+          await prefs.setString('auth_token', 'logged_in');
           await prefs.setString('role', userRole); // Lưu quyền động của tài khoản này vào máy
+          if (!mounted) return;
 
           // In log ra debug console để kiểm tra quyền thực tế khi đăng nhập
           debugPrint("🔥 ĐĂNG NHẬP THÀNH CÔNG! QUYỀN TÀI KHOẢN HIỆN TẠI LÀ: $userRole");
 
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(result['message'] ?? 'Đăng nhập thành công!')),
           );
