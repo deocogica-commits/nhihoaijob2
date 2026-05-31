@@ -10,15 +10,10 @@ class JobDetailScreen extends StatelessWidget {
 
   Future<bool> _canDeleteJob() async {
     final prefs = await SharedPreferences.getInstance();
-    final role = prefs.getString('role') ?? 'worker';
     final currentUserId = prefs.getString('user_id') ?? prefs.getString('id') ?? '';
     final jobUserId = job['user_id']?.toString() ?? '';
 
-    if (role == 'admin') return true;
-    if (role == 'hr' || role == 'boss' || role == 'employer') {
-      return currentUserId.isNotEmpty && currentUserId == jobUserId;
-    }
-    return false;
+    return currentUserId.isNotEmpty && currentUserId == jobUserId;
   }
 
   Future<void> _openEditScreen(BuildContext context) async {
