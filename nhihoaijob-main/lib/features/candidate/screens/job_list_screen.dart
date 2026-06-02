@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'job_detail_screen.dart'; // Đảm bảo bạn đã import màn hình chi tiết
+import 'package:easy_localization/easy_localization.dart'; // Đã thêm
+import 'job_detail_screen.dart';
 
 class JobsListScreen extends StatefulWidget {
-  final String category; // 'sinh_vien', 'lao_dong', 'chuyen_chu'
-  final String region;   // 'đài bắc', 'đài trung', ... hoặc rỗng để lấy tất cả
+  final String category;
+  final String region;
 
   const JobsListScreen({super.key, required this.category, this.region = ''});
 
@@ -23,16 +24,12 @@ class _JobsListScreenState extends State<JobsListScreen> {
   }
 
   Future<List<dynamic>> _fetchJobs() async {
-    // Gọi API lọc dữ liệu từ server
-    final url = Uri.parse(
-        'https://nhjob.online/api/posts/get_filtered_jobs.php?category=${widget.category}&region=${widget.region}');
-    
+    final url = Uri.parse('https://nhjob.online/api/posts/get_filtered_jobs.php?category=${widget.category}&region=${widget.region}');
     final response = await http.get(url);
-    
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes));
     } else {
-      throw Exception('Không thể tải dữ liệu');
+      throw Exception('Failed to load data');
     }
   }
 
@@ -40,7 +37,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Danh mục: ${widget.category.toUpperCase()}"),
+        title: Text("${'jobs_list.title'.tr()}${widget.category.toUpperCase()}"),
         backgroundColor: const Color(0xFFE24C33),
       ),
       body: FutureBuilder<List<dynamic>>(
@@ -49,9 +46,9 @@ class _JobsListScreenState extends State<JobsListScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFFE24C33)));
           } else if (snapshot.hasError) {
-            return Center(child: Text("Lỗi: ${snapshot.error}"));
+            return Center(child: Text("${'jobs_list.error'.tr()}${snapshot.error}"));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Không có tin đăng nào ở khu vực này."));
+            return Center(child: Text("jobs_list.empty".tr()));
           }
 
           final jobs = snapshot.data!;
@@ -65,15 +62,11 @@ class _JobsListScreenState extends State<JobsListScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
                   leading: const Icon(Icons.work_outline, color: Color(0xFFE24C33)),
-                  title: Text(job['title'] ?? 'Không tiêu đề', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(job['title'] ?? 'jobs_list.no_title'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text("${job['region']} • ${job['salary']}"),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    // Chuyển sang màn hình chi tiết
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)));
                   },
                 ),
               );

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
-import 'package:http/http.dart' as http; // Thêm thư viện http để kết nối server
-import 'dart:convert'; // Thêm để giải mã chuỗi dữ liệu JSON
-import 'package:shared_preferences/shared_preferences.dart'; // ĐÃ THÊM: Để lưu quyền vào máy
-import 'package:tuanhoai01/features/candidate/screens/candidate_main_screen.dart'; // Màn hình chính (Home) của bạn
-import 'package:tuanhoai01/features/auth/screens/register_screen.dart'; // Import màn hình đăng ký
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:tuanhoai01/features/candidate/screens/candidate_main_screen.dart';
+import 'package:tuanhoai01/features/auth/screens/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,7 +18,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // ĐƯỜNG LINK API ĐĂNG NHẬP CHUẨN TRÊN SERVER THẬT
   final String _loginApiUrl = "https://nhjob.online/api/auth/login.php";
   bool _isLoading = false;
 
@@ -28,15 +28,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // HÀM XỬ LÝ ĐĂNG NHẬP XÁC THỰC VỚI DATABASE TRÊN HOST (ĐÃ SỬA PHÂN QUYỀN ĐỘNG)
   Future<void> _onLoginPressed() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // 1. Kiểm tra nhanh dữ liệu trống tại Client
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin.')),
+        SnackBar(content: Text('auth.msg_required_info'.tr())),
       );
       return;
     }
@@ -44,12 +42,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 2. Gửi yêu cầu đăng nhập dạng POST lên file login.php trên server
       final response = await http.post(
         Uri.parse(_loginApiUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          'username': email, // File PHP của bạn nhận tham số là 'username' (hỗ trợ nhập cả email/username)
+          'username': email,
           'password': password,
         }),
       );
@@ -57,16 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (response.statusCode == 200) {
-        // 3. Giải mã dữ liệu JSON trả về từ máy chủ
         final result = jsonDecode(response.body);
 
-        // ĐIỀU KIỆN QUYẾT ĐỊNH: Server xác nhận đúng tài khoản mật khẩu (status == 'success')
         if (result['status'] == 'success') {
           if (!mounted) return;
 
-          // 🌟 ĐÃ SỬA TẠI ĐÂY: Lấy quyền thực tế từ server trả về thay vì ép cứng chữ 'admin'
-          // Nếu server trả về key 'role' trực tiếp thì result['role'] sẽ hoạt động chuẩn xác.
-          // Trong trường hợp quyền bị rỗng hoặc null, app sẽ mặc định gán là 'user' để bảo mật.
           String userRole = result['role'] ?? 'user';
           final Map<String, dynamic>? user =
               result['user'] is Map<String, dynamic>
@@ -83,43 +75,35 @@ class _LoginScreenState extends State<LoginScreen> {
             await prefs.setString('id', userId);
           }
           await prefs.setString('auth_token', 'logged_in');
-          await prefs.setString('role', userRole); // Lưu quyền động của tài khoản này vào máy
-          if (!mounted) return;
-
-          // In log ra debug console để kiểm tra quyền thực tế khi đăng nhập
-          debugPrint("🔥 ĐĂNG NHẬP THÀNH CÔNG! QUYỀN TÀI KHOẢN HIỆN TẠI LÀ: $userRole");
-
+          await prefs.setString('role', userRole);
+          
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Đăng nhập thành công!')),
+            SnackBar(content: Text(result['message'] ?? 'auth.login_success'.tr())),
           );
 
-          // Điều hướng vào thẳng màn hình Home (CandidateMainScreen) và xóa sạch lịch sử chuyển trang trước đó
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const CandidateMainScreen()),
             (route) => false,
           );
         } else {
-          // Trường hợp Server báo sai tài khoản hoặc sai mật khẩu
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Đăng nhập thất bại.')),
+            SnackBar(content: Text(result['message'] ?? 'auth.login_failed'.tr())),
           );
         }
       } else {
-        // Trường hợp lỗi kết nối hệ thống máy chủ (Lỗi 500, lỗi 502,...)
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi hệ thống máy chủ (${response.statusCode})')),
+          SnackBar(content: Text('auth.server_error'.tr())),
         );
       }
     } catch (e) {
-      // Trường hợp lỗi kết nối mạng internet hoặc thiết bị không có mạng
       setState(() => _isLoading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã xảy ra lỗi kết nối: $e')),
+        SnackBar(content: Text('auth.error_connection'.tr())),
       );
     }
   }
@@ -131,6 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      // Đã loại bỏ AppBar chứa nút chuyển ngôn ngữ
       body: SafeArea(
         child: Stack(
           children: [
@@ -147,21 +132,21 @@ class _LoginScreenState extends State<LoginScreen> {
                         const Icon(Icons.image_not_supported, size: 100),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'Đăng Nhập',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  Text(
+                    'auth.login_title'.tr(),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 32),
                   _buildInputField(
                     controller: _emailController,
-                    label: 'Email hoặc Tên tài khoản',
+                    label: 'auth.email_label'.tr(),
                     icon: Remix.mail_line,
                     color: zaloBlue,
                   ),
                   const SizedBox(height: 18),
                   _buildInputField(
                     controller: _passwordController,
-                    label: 'Mật khẩu',
+                    label: 'auth.password_label'.tr(),
                     icon: Remix.lock_password_line,
                     color: zaloBlue,
                     isPassword: true,
@@ -187,16 +172,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('ĐĂNG NHẬP',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          : Text('auth.login_button'.tr(),
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Chưa có tài khoản? ',
-                          style: TextStyle(color: Colors.grey)),
+                      Text('auth.no_account'.tr(),
+                          style: const TextStyle(color: Colors.grey)),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -206,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                         child: Text(
-                          'Đăng ký ngay',
+                          'auth.register_now'.tr(),
                           style: TextStyle(
                               color: zaloBlue, fontWeight: FontWeight.bold),
                         ),

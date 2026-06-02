@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:remixicon/remixicon.dart';
-import 'package:http/http.dart' as http; // Thêm thư viện http để gọi API trực tiếp nếu cần
-import 'dart:convert'; // Thêm để giải mã chuỗi JSON từ Server
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart'; // Đã thêm
 import 'package:tuanhoai01/features/candidate/screens/candidate_main_screen.dart';
 import 'package:tuanhoai01/features/auth/screens/login_screen.dart';
 
@@ -14,70 +15,50 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // 1. Khai báo các Controller để lấy dữ liệu từ TextField
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  // ĐƯỜNG LINK API CHUẨN ĐÃ ĐƯỢC FIX LỖI SERVER
   final String _registerApiUrl = "https://nhjob.online/api/auth/register.php";
   bool _isLoading = false;
 
-  // 2. Hàm xử lý đăng ký gửi trực tiếp lên Host thật
   Future<void> _handleRegister() async {
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    // Kiểm tra dữ liệu đầu vào cơ bản tại Client
     if (username.isEmpty || email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('register.msg_empty'.tr())));
       return;
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mật khẩu xác nhận không khớp')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('register.msg_wrong_pass'.tr())));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // Thực hiện gửi dữ liệu đăng ký dạng POST lên Host nhjob.online
       final response = await http.post(
         Uri.parse(_registerApiUrl),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          'username': username,
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'username': username, 'email': email, 'password': password}),
       );
-
-      debugPrint('REGISTER API URL: $_registerApiUrl');
-      debugPrint('REGISTER STATUS: ${response.statusCode}');
-      debugPrint('REGISTER HEADERS: ${response.headers}');
-      debugPrint('REGISTER BODY: ${response.body}');
 
       setState(() => _isLoading = false);
 
       if (response.statusCode == 200) {
-        // Giải mã dữ liệu JSON trả về từ file register.php của server
         final result = jsonDecode(response.body);
-
-        // ĐIỀU KIỆN QUYẾT ĐỊNH: Chỉ khi Server trả về status thành công mới cho vào trang Home
         if (result['status'] == 'success') {
           if (!mounted) return;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('user_name', username);
           await prefs.setString('role', 'worker');
           await prefs.setString('auth_token', 'logged_in');
+          
           if (result['user'] is Map<String, dynamic>) {
             final user = result['user'] as Map<String, dynamic>;
             final userId = user['id']?.toString() ?? '';
@@ -89,38 +70,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
             await prefs.setString('role', (user['role'] ?? 'worker').toString());
           }
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đăng ký thành công! Đang vào hệ thống...')),
-          );
-
-          // Xóa toàn bộ lịch sử chuyển trang cũ và đưa người dùng vào thẳng trang Home (Main)
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const CandidateMainScreen()),
-            (route) => false,
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('register.msg_success'.tr())));
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const CandidateMainScreen()), (route) => false);
         } else {
-          // Trường hợp server phản hồi lỗi (Ví dụ trùng Email, trùng Tên tài khoản)
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Đăng ký thất bại từ máy chủ')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'register.msg_fail'.tr())));
         }
       } else {
-        // Trường hợp sập lỗi kết nối HTTP không mong muốn (Lỗi 500, lỗi 404)
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi kết nối Server thật (${response.statusCode})')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${'register.msg_server_error'.tr()} (${response.statusCode})')));
       }
     } catch (e) {
-      debugPrint('REGISTER EXCEPTION: $e');
-      // Trường hợp mất mạng hoặc không thể gửi request đi được
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã xảy ra lỗi kết nối mạng: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${'register.msg_network_error'.tr()}: $e')));
     }
   }
 
@@ -148,44 +111,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 30),
                           Image.asset('assets/images/logo.png', height: 120, fit: BoxFit.contain),
                           const SizedBox(height: 16),
-                          const Text('Tạo tài khoản mới',
-                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                          Text('register.title'.tr(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
                           const SizedBox(height: 32),
 
-                          // Form nhập dữ liệu của bạn
-                          _buildInputField(label: 'Tên tài khoản', icon: Remix.user_3_line, color: zaloBlue, controller: _usernameController),
+                          _buildInputField(label: 'register.username'.tr(), icon: Remix.user_3_line, color: zaloBlue, controller: _usernameController),
                           const SizedBox(height: 18),
-                          _buildInputField(label: 'Email', icon: Remix.mail_line, color: zaloBlue, controller: _emailController),
+                          _buildInputField(label: 'register.email'.tr(), icon: Remix.mail_line, color: zaloBlue, controller: _emailController),
                           const SizedBox(height: 18),
-                          _buildInputField(label: 'Mật khẩu', icon: Remix.lock_password_line, color: zaloBlue, isPassword: true, controller: _passwordController),
+                          _buildInputField(label: 'register.password'.tr(), icon: Remix.lock_password_line, color: zaloBlue, isPassword: true, controller: _passwordController),
                           const SizedBox(height: 18),
-                          _buildInputField(label: 'Xác nhận mật khẩu', icon: Remix.checkbox_circle_line, color: zaloBlue, isPassword: true, controller: _confirmPasswordController),
+                          _buildInputField(label: 'register.confirm_password'.tr(), icon: Remix.checkbox_circle_line, color: zaloBlue, isPassword: true, controller: _confirmPasswordController),
                           
                           const SizedBox(height: 36),
 
-                          // Nút đăng ký tương tác
                           SizedBox(
                             width: double.infinity,
                             height: 48,
                             child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: zaloBlue,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                elevation: 0,
-                              ),
+                              style: ElevatedButton.styleFrom(backgroundColor: zaloBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), elevation: 0),
                               onPressed: _isLoading ? null : _handleRegister,
                               child: _isLoading 
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                  )
-                                : const Text('ĐĂNG KÝ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : Text('register.button'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                             ),
                           ),
 
                           const SizedBox(height: 40),
-                          const Text('Hoặc đăng ký nhanh bằng', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          Text('register.social_text'.tr(), style: const TextStyle(color: Colors.grey, fontSize: 13)),
                           const SizedBox(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -194,17 +146,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               const SizedBox(width: 20),
                               _socialButton(Remix.apple_fill, Colors.black),
                               const SizedBox(width: 20),
-                              _socialButton(Remix.facebook_circle_fill, const Color(0xFF1877F2)), // Sửa sang màu xanh Facebook thương hiệu
+                              _socialButton(Remix.facebook_circle_fill, const Color(0xFF1877F2)),
                             ],
                           ),
                           const SizedBox(height: 32),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text('Đã có tài khoản?', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                              Text('register.has_account'.tr(), style: const TextStyle(color: Colors.grey, fontSize: 14)),
                               TextButton(
                                 onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
-                                child: const Text('Đăng nhập', style: TextStyle(color: zaloBlue, fontWeight: FontWeight.bold, fontSize: 14)),
+                                child: Text('register.login'.tr(), style: const TextStyle(color: zaloBlue, fontWeight: FontWeight.bold, fontSize: 14)),
                               ),
                             ],
                           ),

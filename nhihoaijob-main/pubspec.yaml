@@ -1,8 +1,6 @@
 name: tuanhoai01
-description: Ứng dụng tuyển dụng việc làm
-
+description: "Ứng dụng tuyển dụng việc làm"
 publish_to: "none"
-
 version: 1.0.0+1
 
 environment:
@@ -12,27 +10,45 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # UI & Icons
   cupertino_icons: ^1.0.8
   remixicon: ^4.9.1
   font_awesome_flutter: ^11.0.0
 
+  # Maps & Location
+  google_maps_flutter: ^2.11.1
+
+  # Logic & Data
   http: ^1.2.2
   http_parser: ^4.1.0
   shared_preferences: ^2.3.3
   flutter_bloc: ^8.1.6
   equatable: ^2.0.7
   url_launcher: ^6.3.0
-  # 🔥 MỚI: Thêm thư viện để chọn ảnh từ thư viện điện thoại hoặc chụp ảnh
   image_picker: ^1.1.2
+  flutter_dotenv: ^5.1.0
+
+  # Đa ngôn ngữ
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  easy_localization: ^3.0.7
+
+  # AI Chat (Gemini)
+  google_generative_ai: ^0.4.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
+  generate: true
+  
   assets:
+    - .env
+    - assets/translations/
     - assets/images/logo.png
     - assets/images/banner1.png
     - assets/images/banner2.png

@@ -3,6 +3,7 @@ import 'package:remixicon/remixicon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart'; // Đã thêm
 import 'dangtin.dart';
 import 'job_detail_screen.dart'; 
 import 'job_search_screen.dart';
@@ -20,8 +21,8 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
   late PageController _bannerController;
   final TextEditingController _searchController = TextEditingController();
   String _currentRole = 'user'; 
-  String _userName = 'Người dùng'; // Biến lưu tên người dùng
-  List<dynamic> _recentJobs = [];
+  String _userName = 'Người dùng'; 
+  List<dynamic> _recentJobs = [];    
   String _searchKeyword = '';
   bool _isLoadingJobs = true;
   String? _avatarUrl;
@@ -53,7 +54,7 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
       setState(() {
         _currentRole = prefs.getString('role') ?? 'user';
         _avatarUrl = prefs.getString('avatar_url');
-        _userName = prefs.getString('user_name') ?? 'Người dùng'; // Lấy tên từ SharedPreferences
+        _userName = prefs.getString('user_name') ?? 'Người dùng';
       });
     }
     await _fetchRecentJobs();
@@ -63,7 +64,7 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload(); 
     final String? newUrl = prefs.getString('avatar_url');
-    final String? newName = prefs.getString('user_name'); // Cập nhật cả tên nếu có đổi
+    final String? newName = prefs.getString('user_name');
     
     if (mounted) {
       setState(() {
@@ -145,7 +146,7 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
                 const SizedBox(height: 24),
                 _buildBannerSlider(),
                 const SizedBox(height: 30),
-                _buildSectionTitle('Việc làm theo khu vực'),
+                _buildSectionTitle('home.regions_title'.tr()),
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 150,
@@ -158,7 +159,7 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
                 ),
                 const SizedBox(height: 30),
                 if (_currentRole != 'worker') ...[_buildPostJobButton(context, mainColor), const SizedBox(height: 30)],
-                _buildSectionTitle('Việc làm mới nhất'),
+                _buildSectionTitle('home.recent_jobs'.tr()),
                 const SizedBox(height: 16),
                 _isLoadingJobs
                     ? const Center(child: CircularProgressIndicator(color: mainColor))
@@ -167,8 +168,8 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                             child: Text(
                               _searchKeyword.trim().isEmpty
-                                  ? 'Chưa có việc làm sinh viên nào.'
-                                  : 'Không tìm thấy việc làm phù hợp.',
+                                  ? 'home.no_jobs'.tr()
+                                  : 'home.not_found'.tr(),
                               style: TextStyle(color: Colors.grey.shade600),
                             ),
                           )
@@ -188,108 +189,76 @@ class _CandidateHomeScreenState extends State<CandidateHomeScreen> {
   }
 
   Widget _buildHeader() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 24.0), 
-    child: Row(children: [
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Hello,'), 
-        // Hiển thị tên động ở đây
-        Text('$_userName 👋', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))
-      ]), 
-      const Spacer(), 
-      GestureDetector(
-        onTap: () async {
-          final shouldRefresh = await Navigator.push(context, MaterialPageRoute(builder: (context) => const CandidateProfileScreen()));
-          if (shouldRefresh == true) {
-            await _loadAvatar();
-          }
-        },
-        child: CircleAvatar(
-          radius: 20,
-          backgroundColor: const Color(0xFFE24C33),
-          backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty) 
-              ? NetworkImage(_avatarUrl!) 
-              : null,
-          child: (_avatarUrl == null || _avatarUrl!.isEmpty) 
-              ? Text(_userName.isNotEmpty ? _userName[0].toUpperCase() : 'U', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)) 
-              : null,
-        ),
-      )
-    ])
+      padding: const EdgeInsets.symmetric(horizontal: 24.0), 
+      child: Row(children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('home.hello'.tr()), 
+          Text('$_userName 👋', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))
+        ]), 
+        const Spacer(), 
+        GestureDetector(
+          onTap: () async {
+            final shouldRefresh = await Navigator.push(context, MaterialPageRoute(builder: (context) => const CandidateProfileScreen()));
+            if (shouldRefresh == true) {
+              await _loadAvatar();
+            }
+          },
+          child: CircleAvatar(
+            radius: 20,
+            backgroundColor: const Color(0xFFE24C33),
+            backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty) 
+                ? NetworkImage(_avatarUrl!) 
+                : null,
+            child: (_avatarUrl == null || _avatarUrl!.isEmpty) 
+                ? Text(_userName.isNotEmpty ? _userName[0].toUpperCase() : 'U', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)) 
+                : null,
+          ),
+        )
+      ])
   );
 
   Widget _buildHomeSearchBar(Color themeColor) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-    child: Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
-      ),
-      child: TextField(
-        controller: _searchController,
-        textInputAction: TextInputAction.search,
-        onChanged: (value) => setState(() => _searchKeyword = value),
-        decoration: InputDecoration(
-          hintText: 'Tìm việc sinh viên...',
-          border: InputBorder.none,
-          prefixIcon: const Icon(Remix.search_2_line),
-          suffixIcon: _searchKeyword.isEmpty
-              ? Icon(Remix.equalizer_line, color: themeColor)
-              : IconButton(
-                  icon: const Icon(Remix.close_line),
-                  color: Colors.grey,
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchKeyword = '');
-                  },
-                ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+        ),
+        child: TextField(
+          controller: _searchController,
+          textInputAction: TextInputAction.search,
+          onChanged: (value) => setState(() => _searchKeyword = value),
+          decoration: InputDecoration(
+            hintText: 'home.search_hint'.tr(),
+            border: InputBorder.none,
+            prefixIcon: const Icon(Remix.search_2_line),
+            suffixIcon: _searchKeyword.isEmpty
+                ? Icon(Remix.equalizer_line, color: themeColor)
+                : IconButton(
+                    icon: const Icon(Remix.close_line),
+                    color: Colors.grey,
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchKeyword = '');
+                    },
+                  ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          ),
         ),
       ),
-    ),
   );
 
-  // ignore: unused_element
-  Widget _buildSearchBar(Color themeColor) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-    child: Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(26),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(26),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const JobSearchScreen()),
-          );
-        },
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 16),
-              const Icon(Remix.search_2_line),
-              const SizedBox(width: 12),
-              const Expanded(child: Text('Tìm việc tại Đài Loan...')),
-              Icon(Remix.equalizer_line, color: themeColor),
-              const SizedBox(width: 16),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
   Widget _buildBannerSlider() => SizedBox(height: 160, child: PageView.builder(controller: _bannerController, itemCount: _bannerImages.length, itemBuilder: (context, index) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.asset(_bannerImages[index], fit: BoxFit.cover)))));
   Widget _buildSectionTitle(String title) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]));
   Widget _buildRecentJobCard(Color themeColor, Map<String, dynamic> job) => Container(margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: ListTile(leading: CircleAvatar(backgroundColor: const Color(0xFFF4F7FA), child: Icon(Remix.briefcase_line, color: themeColor)), title: Text(job['title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text('${job['region'] ?? ''} • ${job['salary'] ?? ''}'), trailing: const Icon(Remix.arrow_right_s_line), onTap: () async { final refresh = await Navigator.push(context, MaterialPageRoute(builder: (context) => JobDetailScreen(job: job))); if (refresh == true) _handleRefresh(); }));
   Widget _buildRegionCard(BuildContext context, String name, String imagePath) => GestureDetector(onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => RegionJobScreen(regionName: name))); _handleRefresh(); }, child: Container(width: 140, margin: const EdgeInsets.only(right: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Stack(children: [ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.asset(imagePath, fit: BoxFit.cover, width: 140, height: 150)), Center(child: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))])));
-  Widget _buildPostJobButton(BuildContext context, Color themeColor) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: InkWell(onTap: () => _showPostOptions(context), child: Container(padding: const EdgeInsets.symmetric(vertical: 14), decoration: BoxDecoration(color: themeColor, borderRadius: BorderRadius.circular(16)), child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Remix.add_circle_line, color: Colors.white), SizedBox(width: 8), Text('Đăng tin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]))));
+  Widget _buildPostJobButton(BuildContext context, Color themeColor) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: InkWell(onTap: () => _showPostOptions(context), child: Container(padding: const EdgeInsets.symmetric(vertical: 14), decoration: BoxDecoration(color: themeColor, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Remix.add_circle_line, color: Colors.white), const SizedBox(width: 8), Text('home.post_job'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]))));
+  
   void _navigateToPostForm(BuildContext context, String title, String category) { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => FormDangTinScreen(title: title, category: category),),).then((_) => _handleRefresh()); }
-  void _showPostOptions(BuildContext context) { showModalBottomSheet(context: context, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))), builder: (context) => Padding(padding: const EdgeInsets.all(30), child: Column(mainAxisSize: MainAxisSize.min, children: [const Text('Bạn muốn đăng tin gì?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 30), Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [ _buildOptionItem(context, Remix.user_search_line, 'Sinh viên', 'sinh_vien'), _buildOptionItem(context, Remix.ship_2_line, 'Lao động', 'lao_dong'), _buildOptionItem(context, Remix.exchange_line, 'Chuyển chủ', 'chuyen_chu') ]) ] ))); }
+  
+  void _showPostOptions(BuildContext context) { showModalBottomSheet(context: context, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))), builder: (context) => Padding(padding: const EdgeInsets.all(30), child: Column(mainAxisSize: MainAxisSize.min, children: [Text('home.post_options_title'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 30), Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [ _buildOptionItem(context, Remix.user_search_line, 'home.option_student'.tr(), 'sinh_vien'), _buildOptionItem(context, Remix.ship_2_line, 'home.option_worker'.tr(), 'lao_dong'), _buildOptionItem(context, Remix.exchange_line, 'home.option_transfer'.tr(), 'chuyen_chu') ]) ] ))); }
+  
   Widget _buildOptionItem(BuildContext context, IconData icon, String title, String category) => Expanded(child: GestureDetector(onTap: () => _navigateToPostForm(context, 'Đăng tin $title', category), child: Column(children: [CircleAvatar(radius: 28, backgroundColor: const Color(0xFFF4F7FA), child: Icon(icon, color: const Color(0xFFE24C33))), const SizedBox(height: 12), Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)) ] )));
 }
