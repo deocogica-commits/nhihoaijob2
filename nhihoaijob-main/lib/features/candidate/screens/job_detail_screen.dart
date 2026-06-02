@@ -11,9 +11,10 @@ class JobDetailScreen extends StatelessWidget {
 
   Future<bool> _canDeleteJob() async {
     final prefs = await SharedPreferences.getInstance();
-    final role = prefs.getString('role') ?? 'worker';
     final currentUserId = prefs.getString('user_id') ?? prefs.getString('id') ?? '';
     final jobUserId = job['user_id']?.toString() ?? '';
+    final role = prefs.getString('role') ?? 'worker';
+
     if (role == 'admin') return true;
     if (role == 'hr' || role == 'boss' || role == 'employer') {
       return currentUserId.isNotEmpty && currentUserId == jobUserId;
@@ -123,4 +124,4 @@ class JobDetailScreen extends StatelessWidget {
       ),
     );
   }
-}
+} 
